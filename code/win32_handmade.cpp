@@ -1,6 +1,7 @@
 #include <minwindef.h>
 #include <windows.h>
 #include <stdio.h>
+#include <wingdi.h>
 
 
 LRESULT CALLBACK MainWindowCallback(HWND Window,
@@ -29,6 +30,18 @@ LRESULT CALLBACK MainWindowCallback(HWND Window,
             {
                 OutputDebugStringA("WM_ACTIVATEAPP\n");
             } break;
+        case WM_PAINT :
+            {
+                PAINTSTRUCT Paint;
+                HDC DeviceContext = BeginPaint(Window, &Paint);
+                int X = Paint.rcPaint.left;
+                int Y = Paint.rcPaint.top;
+                int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
+                int Width = Paint.rcPaint.right - Paint.rcPaint.left;
+                PatBlt(DeviceContext, X, Y, Width, Height, WHITENESS);
+
+                EndPaint(Window, &Paint);
+            } break;
         default :
             {
                 // OutputDebugStringA("default\n");
@@ -53,14 +66,14 @@ int CALLBACK WinMain(
     WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
     WindowClass.lpfnWndProc = MainWindowCallback;
     WindowClass.hInstance = Instance;
-    WindowClass.lpszMenuName = "HandmadeHeroWindowClass";
+    WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
 
     if (RegisterClass(&WindowClass)) {
         HWND WindowHandle = CreateWindowEx(
                 0,
                 WindowClass.lpszClassName,
-                "HandmadeHeroWindowClass",
+                "Hendmade hero",
                 WS_OVERLAPPEDWINDOW|WS_VISIBLE,
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,
@@ -74,7 +87,7 @@ int CALLBACK WinMain(
             for( ; ; ){
 
                 MSG Message;
-                BOOL MessageResult = GetMessage(&Message, 0, 0, 0); 
+                BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
                 if (MessageResult > 0) {
                     TranslateMessage(&Message);
                     DispatchMessageA(&Message);
@@ -84,7 +97,7 @@ int CALLBACK WinMain(
 
             }
         }
-    } 
+    }
     return (0);
 }
 
