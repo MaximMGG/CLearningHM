@@ -2,5 +2,5 @@
 
 mkdir ..\..\build
 pushd ..\..\build
-gcc c:\users\maxim\desktop\c\handmade\code\win32_handmade.cpp
+gcc c:\users\123\desktop\cprojects\handmade\code\win32_handmade.cpp
 popd
