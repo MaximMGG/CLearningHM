@@ -1,34 +1,85 @@
-
 #include <windows.h>
-#include <stdio.h>
-#include <wingdi.h>
+
+#define internal static 
+#define local_persist static 
+#define global_variable static 
+//TODO (maxim) This is flobal for now.
+global_variable bool Running;
+global_variable BITMAPINFO BitmapInfo; 
+global_variable void *BitmapMemory;
+global_variable HBITMAP BitmapHandle;
 
 
-LRESULT CALLBACK MainWindowCallback(HWND Window,
+
+internal void Win32ResizeDIBSection(int Width, int Height) {
+    //TODO (maxim) : Bulletproof this.
+    //maybe don't free first, free after, then free if that false.
+    
+
+    //TODO (maxim) : Free our DIBSection
+    if (BitmapHandle) {
+        DeleteObject(BitmapHandle); 
+    }
+
+    BitmapInfo.bmiHeader.biSize = sizeof(BitmapInfo.bmiHeader);
+    BitmapInfo.bmiHeader.biWidth = Width; 
+    BitmapInfo.bmiHeader.biHeight = Height;
+    BitmapInfo.bmiHeader.biPlanes = 1;
+    BitmapInfo.bmiHeader.biBitCount = 32;
+    BitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    HDC DeviceContext = CreateCompatibleDC(0); // ??? stop whatch at 56:07
+
+    BitmapHandle = CreateDIBSection(
+            DeviceContext, &BitmapInfo,
+            DIB_RGB_COLORS,
+            &BitmapMemory,
+            0,
+            0);
+
+    ReleaseDC(0, DeviceContext);
+}
+
+internal void 
+Win32UpdateWindow(HDC DeviceContext, int X, int Y, int Width, int Height) {
+    StretchDIBits(DeviceContext,
+                 X, Y, Width, Height,
+                 X, Y, Width, Height,
+                 const VOID *lpBits,
+                 const BITMAPINFO *lpBitsIndo,
+                 DIB_RGB_COLORS, SRCCOPY);    
+}
+
+LRESULT CALLBACK Win32MainWindowCallback(HWND Window,
                                     UINT Message,
                                     WPARAM wParam,
                                     LPARAM lParam)
 {
-
     LRESULT Result = 0;
-
 
     switch (Message) {
         case WM_SIZE :
             {
+                RECT ClientRec;
+                GetClientRect(Window, &ClientRec);
+                int Width = ClientRec.right - ClientRec.left;
+                int Height = ClientRec.bottom - ClientRec.top;
+                Win32ResizeDIBSection(Width, Height);
                 OutputDebugStringA("WM_SIZE\n");
-            } break;
-        case WM_DESTROY :
-            {
-                OutputDebugStringA("WM_DESTROYk\n");
             } break;
         case WM_CLOSE :
             {
-                OutputDebugStringA("WM_CLOSE\n");
+                //TODO (maxim) : handle this with a message to the user?
+                Running = false;
             } break;
         case WM_ACTIVATEAPP :
             {
                 OutputDebugStringA("WM_ACTIVATEAPP\n");
+            } break;
+        case WM_DESTROY :
+            {
+                //TODO (maxim) : handle this as an error - recreate window?
+                Running = false;
             } break;
         case WM_PAINT :
             {
@@ -38,16 +89,8 @@ LRESULT CALLBACK MainWindowCallback(HWND Window,
                 int Y = Paint.rcPaint.top;
                 int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
                 int Width = Paint.rcPaint.right - Paint.rcPaint.left;
-                static DWORD Operation = WHITENESS;
-                PatBlt(DeviceContext, X, Y, Width, Height, Operation);
-                if (Operation == WHITENESS) {
-                    Operation = BLACKNESS;
-                } else {
-                    Operation = WHITENESS;
-                }
-
-
-
+                // Win32UpdateWindow(Window);
+                Win32UpdateWindow(DeviceContext, X, Y, Width, Height);
                 EndPaint(Window, &Paint);
             } break;
         default :
@@ -71,9 +114,10 @@ int CALLBACK WinMain(
     WNDCLASS WindowClass = {};
 
     //TODO(maxim) check if HREDRAW/ still matter
-    WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
-    WindowClass.lpfnWndProc = MainWindowCallback;
+    // WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
+    WindowClass.lpfnWndProc = Win32MainWindowCallback;
     WindowClass.hInstance = Instance;
+    // WindowClass.hIcon;
     WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
 
@@ -92,10 +136,11 @@ int CALLBACK WinMain(
                 Instance,
                 0);
         if(WindowHandle) {
-            for( ; ; ){
+            Running = true;
+            while(Running){
 
                 MSG Message;
-                BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
+                BOOL MessageResult = GetMessageA(&Message, 0, 0, 0);
                 if (MessageResult > 0) {
                     TranslateMessage(&Message);
                     DispatchMessageA(&Message);
@@ -104,7 +149,11 @@ int CALLBACK WinMain(
                 }
 
             }
+        } else {
+            //TODO (maxim) :logging
         }
+    } else {
+        //TODO (maxim) :logging
     }
     return (0);
 }
